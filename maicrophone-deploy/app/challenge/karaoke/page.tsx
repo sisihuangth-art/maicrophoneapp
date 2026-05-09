@@ -4,7 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ChatInputBar } from '@/components/chat-input-bar';
 import { ChatMessages } from '@/components/chat-messages';
@@ -24,6 +24,15 @@ export default function KaraokeChallenge() {
     });
     const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const isLoading = !!uploadProgress || status === 'submitted' || status === 'streaming';
+
+    // ① AI 自動開場白
+    const hasInitialized = useRef(false);
+    useEffect(() => {
+        if (!hasInitialized.current && user) {
+            hasInitialized.current = true;
+            sendMessage({ role: 'user', parts: [{ type: 'text', text: '開始' }] as any });
+        }
+    }, [user]); // eslint-disable-line
 
     // Unlock recording when AI has found YouTube results
     const recordingUnlocked = useMemo(() => {
@@ -90,6 +99,9 @@ export default function KaraokeChallenge() {
     const resetInput = () => { setInput(''); if (isListening) stopListening(); };
     if (!user) return null;
 
+    // ① 過濾掉第一則觸發訊息，不顯示給使用者
+    const displayMessages = messages.filter((m, i) => !(i === 0 && m.role === 'user'));
+
     return (
         <main className="flex flex-col items-center justify-between min-h-screen text-white p-5 overflow-hidden relative"
             style={{ backgroundColor: '#0D0A14' }}>
@@ -120,7 +132,7 @@ export default function KaraokeChallenge() {
                 </header>
 
                 <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 text-left font-medium">
-                    <ChatMessages messages={messages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
+                    <ChatMessages messages={displayMessages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
                 </div>
             </div>
 

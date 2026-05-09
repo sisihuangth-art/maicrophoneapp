@@ -50,6 +50,15 @@ export default function LongToneChallenge() {
     const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const isLoading = !!uploadProgress || status === 'submitted' || status === 'streaming';
 
+    // ① AI 自動開場白
+    const hasInitialized = useRef(false);
+    useEffect(() => {
+        if (!hasInitialized.current && user) {
+            hasInitialized.current = true;
+            sendMessage({ role: 'user', parts: [{ type: 'text', text: '開始' }] as any });
+        }
+    }, [user]); // eslint-disable-line
+
     const targetInfo = useMemo(() => {
         for (let i = messages.length - 1; i >= 0; i--) {
             const m = messages[i];
@@ -133,6 +142,9 @@ export default function LongToneChallenge() {
     const resetInput = () => { setInput(''); if (isListening) stopListening(); };
     if (!user) return null;
 
+    // ① 過濾掉第一則觸發訊息，不顯示給使用者
+    const displayMessages = messages.filter((m, i) => !(i === 0 && m.role === 'user'));
+
     const progressPct = Math.min((recordingTime / 20) * 100, 100);
 
     return (
@@ -164,36 +176,36 @@ export default function LongToneChallenge() {
                     <p className="text-sm" style={{ color: 'rgba(240,235,248,0.5)' }}>氣息控制挑戰 — 穩定、持久地唱出目標音！</p>
                 </header>
 
-                {/* Progress bar during recording */}
-                {isRecording && (
-                    <div className="relative w-full max-w-md mx-auto shrink-0">
-                        {milestone && (
-                            <div className="milestone-toast absolute -top-9 left-1/2 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap z-20"
-                                style={{ background: '#FFD93D', color: '#0D0A14', transform: 'translateX(-50%)' }}>
-                                {milestone}
-                            </div>
-                        )}
-                        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                            <div className="h-full rounded-full transition-all duration-1000"
-                                style={{
-                                    width: `${progressPct}%`,
-                                    background: progressPct >= 100
-                                        ? 'linear-gradient(90deg, #06D6A0, #FFD93D)'
-                                        : 'linear-gradient(90deg, #06D6A0, #8B5CF6)',
-                                }} />
-                        </div>
-                        <div className="flex justify-between text-xs mt-1.5" style={{ color: 'rgba(240,235,248,0.35)' }}>
-                            <span>0s</span>
-                            <span>10s</span>
-                            <span>20s</span>
-                        </div>
-                    </div>
-                )}
-
                 <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 text-left font-medium">
-                    <ChatMessages messages={messages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
+                    <ChatMessages messages={displayMessages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
                 </div>
             </div>
+
+            {/* ③ 進度條固定在 LongtoneVisualizer 上方，不在可捲動區域內 */}
+            {isRecording && (
+                <div className="relative w-full max-w-md mx-auto shrink-0 px-5 mb-2">
+                    {milestone && (
+                        <div className="absolute -top-9 left-1/2 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap z-20"
+                            style={{ background: '#FFD93D', color: '#0D0A14', transform: 'translateX(-50%)' }}>
+                            {milestone}
+                        </div>
+                    )}
+                    <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                        <div className="h-full rounded-full transition-all duration-1000"
+                            style={{
+                                width: `${progressPct}%`,
+                                background: progressPct >= 100
+                                    ? 'linear-gradient(90deg, #06D6A0, #FFD93D)'
+                                    : 'linear-gradient(90deg, #06D6A0, #8B5CF6)',
+                            }} />
+                    </div>
+                    <div className="flex justify-between text-xs mt-1.5" style={{ color: 'rgba(240,235,248,0.35)' }}>
+                        <span>0s</span>
+                        <span>10s</span>
+                        <span>20s</span>
+                    </div>
+                </div>
+            )}
 
             <LongtoneVisualizer
                 features={features} rmsHistory={rmsHistory}

@@ -10,6 +10,28 @@ const NOTE_ARRAY_RE = /\[\s*"[A-Ga-g][#b]?\d"(?:\s*,\s*"[A-Ga-g][#b]?\d")*\s*\]/
 /** Regex to detect a longtone target note JSON (e.g. {"note": "E4", "vowel": "Ah"}) */
 const LONGTONE_TARGET_RE = /\{\s*"note"\s*:\s*"([A-Ga-g]#?\d)"\s*,\s*"vowel"\s*:\s*"(\w+)"\s*\}/;
 
+// ② renderMarkdown：解析 **粗體**（粉色）＋ \n 分段
+function renderMarkdown(text: string): React.ReactNode {
+    const paragraphs = text.split('\n').filter((p) => p.trim() !== '');
+    if (paragraphs.length === 0) return null;
+    return (
+        <>
+            {paragraphs.map((para, pIdx) => {
+                const parts = para.split(/(\*\*[^*]+\*\*)/g);
+                return (
+                    <p key={pIdx} style={{ marginTop: pIdx > 0 ? '0.6rem' : 0, lineHeight: '1.65' }}>
+                        {parts.map((part, i) =>
+                            part.startsWith('**') && part.endsWith('**')
+                                ? <strong key={i} style={{ fontWeight: 700, color: '#FF2D7A' }}>{part.slice(2, -2)}</strong>
+                                : <span key={i}>{part}</span>
+                        )}
+                    </p>
+                );
+            })}
+        </>
+    );
+}
+
 interface YouTubeVideoResult {
     videoId: string;
     title: string;
@@ -96,12 +118,14 @@ interface ChatMessagesProps {
 }
 
 export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessagesProps) {
+    // ④ 空狀態改中文
     if (messages.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-md rounded-[3rem] w-full max-w-md mx-auto shadow-2xl gap-8 mt-4">
+            <div className="flex flex-col items-center justify-center p-12 backdrop-blur-md rounded-[3rem] w-full max-w-md mx-auto shadow-2xl gap-8 mt-4"
+                style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
                 <div className="space-y-2 text-center">
-                    <h2 className="text-xl font-semibold text-white">Ready when you are</h2>
-                    <p className="text-sm text-zinc-500">Type, speak, or record audio below.</p>
+                    <h2 className="text-xl font-semibold text-white">準備好了嗎？✨</h2>
+                    <p className="text-sm" style={{ color: 'rgba(240,235,248,0.4)' }}>打字、說話或錄音，開始練唱吧！</p>
                 </div>
             </div>
         );
@@ -112,22 +136,34 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
             {messages.map((m) =>
                 m.role !== 'system' ? (
                     <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {/* ④ 泡泡顏色主題化 */}
                         <div
-                            className={`p-4 rounded-3xl max-w-[85%] ${m.role === 'user'
-                                ? 'bg-indigo-600 text-white rounded-br-none'
-                                : 'bg-zinc-800/80 text-zinc-200 border border-zinc-700 rounded-bl-none'
-                                }`}
+                            className={`p-4 rounded-3xl max-w-[85%] ${m.role === 'user' ? 'rounded-br-none' : 'rounded-bl-none'}`}
+                            style={
+                                m.role === 'user'
+                                    ? {
+                                        background: 'linear-gradient(135deg, rgba(255,45,122,0.25), rgba(139,92,246,0.25))',
+                                        border: '1px solid rgba(255,45,122,0.3)',
+                                        color: 'rgba(255,255,255,0.95)',
+                                    }
+                                    : {
+                                        background: 'rgba(255,255,255,0.06)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        color: 'rgba(240,235,248,0.9)',
+                                    }
+                            }
                         >
                             {Array.isArray(m.parts)
                                 ? m.parts.map((p, i) => {
                                     if (p.type === 'reasoning') return (
                                         <details key={i} className="mb-2 text-sm">
-                                            <summary className="cursor-pointer text-zinc-400 hover:text-zinc-300 select-none">💭 Thinking…</summary>
-                                            <pre className="mt-1 whitespace-pre-wrap text-zinc-500 text-xs leading-relaxed">{p.text}</pre>
+                                            <summary className="cursor-pointer select-none" style={{ color: 'rgba(255,255,255,0.4)' }}>💭 思考中…</summary>
+                                            <pre className="mt-1 whitespace-pre-wrap text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.3)' }}>{p.text}</pre>
                                         </details>
                                     );
                                     if (p.type === 'text') {
                                         const text = p.text ?? '';
+                                        const isAssistant = m.role === 'assistant';
 
                                         // Detect longtone target note JSON
                                         const longtoneMatch = text.match(LONGTONE_TARGET_RE);
@@ -139,10 +175,10 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                             const vowel = longtoneMatch[2];
                                             return (
                                                 <div key={i}>
-                                                    {before && <span className="block mb-2">{before}</span>}
+                                                    {before && <div className="mb-2">{isAssistant ? renderMarkdown(before) : before}</div>}
                                                     <NotePlayer notes={[note]} />
-                                                    <div className="mt-1 text-xs text-zinc-400">發聲方式：{vowel}</div>
-                                                    {after && <span className="block mt-2">{after}</span>}
+                                                    <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>發聲方式：{vowel}</div>
+                                                    {after && <div className="mt-2">{isAssistant ? renderMarkdown(after) : after}</div>}
                                                 </div>
                                             );
                                         }
@@ -157,14 +193,20 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                 const notes: string[] = JSON.parse(match[0]);
                                                 return (
                                                     <div key={i}>
-                                                        {before && <span>{before}</span>}
+                                                        {before && <div className="mb-2">{isAssistant ? renderMarkdown(before) : before}</div>}
                                                         <NotePlayer notes={notes} />
-                                                        {after && <span className="block mt-2">{after}</span>}
+                                                        {after && <div className="mt-2">{isAssistant ? renderMarkdown(after) : after}</div>}
                                                     </div>
                                                 );
                                             } catch { /* fall through to plain text */ }
                                         }
-                                        return <span key={i}>{text}</span>;
+
+                                        // ② 一般文字：assistant 套 renderMarkdown，user 純文字
+                                        return (
+                                            <div key={i}>
+                                                {isAssistant ? renderMarkdown(text) : text}
+                                            </div>
+                                        );
                                     }
                                     const toolPayload = getToolPayload(p);
                                     if (toolPayload) {
@@ -215,16 +257,16 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                         有效持續時長分析
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 text-xs">
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">乾淨時長</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>乾淨時長</div>
                                                             <div className="text-lg font-bold text-cyan-400">{r.cleanDurationSeconds}s</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">總時長</div>
-                                                            <div className="text-lg font-bold text-zinc-300">{r.totalDurationSeconds}s</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>總時長</div>
+                                                            <div className="text-lg font-bold text-white">{r.totalDurationSeconds}s</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">得分</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>得分</div>
                                                             <div className="text-lg font-bold text-cyan-400">{r.score}/15</div>
                                                         </div>
                                                     </div>
@@ -249,16 +291,16 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                         音準穩定度分析
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 text-xs">
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">平均偏差</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>平均偏差</div>
                                                             <div className="text-lg font-bold text-blue-400">{r.meanCentsOff}¢</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">標準差</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>標準差</div>
                                                             <div className="text-lg font-bold text-blue-400">{r.stdCentsOff}¢</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">得分</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>得分</div>
                                                             <div className="text-lg font-bold text-blue-400">{r.score}/15</div>
                                                         </div>
                                                     </div>
@@ -275,16 +317,16 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                         音色品質分析
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 text-xs">
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">氣息比</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>氣息比</div>
                                                             <div className="text-lg font-bold text-purple-400">{r.avgSpectralFlatness}</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">氣音起始</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>氣音起始</div>
                                                             <div className="text-lg font-bold text-purple-400">{r.breathinessOnsetSecond ? `${r.breathinessOnsetSecond}s` : '無'}</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">得分</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>得分</div>
                                                             <div className="text-lg font-bold text-purple-400">{r.score}/10</div>
                                                         </div>
                                                     </div>
@@ -310,21 +352,21 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                         音量穩定度分析
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 text-xs">
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">變異係數</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>變異係數</div>
                                                             <div className="text-lg font-bold text-amber-400">{r.rmsCV}</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">衰減</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>衰減</div>
                                                             <div className={`text-lg font-bold ${r.decayDetected ? 'text-red-400' : 'text-green-400'}`}>{r.decayDetected ? '有' : '無'}</div>
                                                         </div>
-                                                        <div className="bg-zinc-800/60 rounded-lg p-2 text-center">
-                                                            <div className="text-zinc-500">得分</div>
+                                                        <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                                            <div style={{ color: 'rgba(255,255,255,0.4)' }}>得分</div>
                                                             <div className="text-lg font-bold text-amber-400">{r.score}/10</div>
                                                         </div>
                                                     </div>
                                                     {r.timeline && r.timeline.length > 1 && (
-                                                        <svg width="100%" height="32" viewBox="0 0 200 32" className="bg-zinc-800/50 rounded-lg" preserveAspectRatio="none">
+                                                        <svg width="100%" height="32" viewBox="0 0 200 32" className="rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }} preserveAspectRatio="none">
                                                             <polyline
                                                                 points={r.timeline.map((t, j) => `${(j / (r.timeline!.length - 1)) * 200},${32 - (t.rms / maxRms) * 28}`).join(' ')}
                                                                 fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinejoin="round"
@@ -340,7 +382,7 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
 
                                             if (videos.length === 0) {
                                                 return (
-                                                    <div key={i} className="text-xs text-zinc-400 my-1">
+                                                    <div key={i} className="text-xs my-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
                                                         找不到可播放的 YouTube 建議。
                                                     </div>
                                                 );
@@ -349,12 +391,12 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                             return (
                                                 <div key={i} className="space-y-3 mt-2">
                                                     {videos.map((video) => (
-                                                        <div key={video.videoId} className="rounded-2xl border border-zinc-700 bg-zinc-900/70 p-3">
-                                                            <div className="text-sm font-semibold text-zinc-100 line-clamp-2">{video.title}</div>
+                                                        <div key={video.videoId} className="rounded-2xl p-3" style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}>
+                                                            <div className="text-sm font-semibold text-white line-clamp-2">{video.title}</div>
                                                             {video.channelTitle && (
-                                                                <div className="text-xs text-zinc-400 mt-1">{video.channelTitle}</div>
+                                                                <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>{video.channelTitle}</div>
                                                             )}
-                                                            <div className="mt-2 overflow-hidden rounded-xl border border-zinc-700">
+                                                            <div className="mt-2 overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
                                                                 <iframe
                                                                     src={video.embedUrl || `https://www.youtube.com/embed/${video.videoId}`}
                                                                     title={video.title}
@@ -365,13 +407,10 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                                                 />
                                                             </div>
                                                             {video.url && (
-                                                                <a
-                                                                    href={video.url}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="inline-block mt-2 text-xs text-indigo-300 hover:text-indigo-200"
-                                                                >
-                                                                    Open on YouTube
+                                                                <a href={video.url} target="_blank" rel="noreferrer"
+                                                                    className="inline-block mt-2 text-xs"
+                                                                    style={{ color: '#8B5CF6' }}>
+                                                                    在 YouTube 上觀看 ↗
                                                                 </a>
                                                             )}
                                                         </div>
@@ -380,21 +419,16 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                                             );
                                         }
 
+                                        // 工具呼叫狀態提示
                                         return (
-                                            <div key={i} className="flex items-center gap-2 text-xs text-zinc-400 my-1">
+                                            <div key={i} className="flex items-center gap-2 text-xs my-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
                                                 <Search className="w-3 h-3" />
-                                                <span>
-                                                    {state === 'result' ? `Used ${toolName}` : `Using ${toolName}…`}
-                                                </span>
+                                                <span>{state === 'result' ? `✓ ${toolName}` : `${toolName} 處理中…`}</span>
                                             </div>
                                         );
                                     }
                                     if (p.type === 'source') return null;
-                                    if (
-                                        p.type === 'file' &&
-                                        typeof p.mediaType === 'string' &&
-                                        p.mediaType.startsWith('audio/')
-                                    ) {
+                                    if (p.type === 'file' && typeof p.mediaType === 'string' && p.mediaType.startsWith('audio/')) {
                                         return (
                                             <div key={i} className="flex items-center gap-2 mt-1">
                                                 <FileAudio className="w-4 h-4 flex-shrink-0 opacity-70" />
@@ -410,19 +444,31 @@ export function ChatMessages({ messages, isLoading, uploadProgress }: ChatMessag
                 ) : null,
             )}
 
+            {/* ④ uploadProgress 泡泡套主題色 */}
             {uploadProgress && (
                 <div className="flex justify-start">
-                    <div className="p-4 rounded-3xl max-w-[85%] bg-zinc-800/80 text-indigo-300 border border-zinc-700 rounded-bl-none flex items-center gap-2">
-                        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" /></svg>
+                    <div className="p-4 rounded-3xl max-w-[85%] rounded-bl-none flex items-center gap-2"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#8B5CF6' }}>
+                        <svg className="w-4 h-4 animate-spin flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                        </svg>
                         {uploadProgress}
                     </div>
                 </div>
             )}
 
+            {/* ④ Loading：Maicrophone 思考中 ＋ 三個紫色跳動圓點 */}
             {isLoading && !uploadProgress && (
                 <div className="flex justify-start">
-                    <div className="p-4 rounded-3xl max-w-[85%] bg-zinc-800/80 text-zinc-400 border border-zinc-700 rounded-bl-none animate-pulse">
-                        Thinking...
+                    <div className="p-4 rounded-3xl max-w-[85%] rounded-bl-none flex items-center gap-2"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,235,248,0.5)' }}>
+                        <span className="text-sm">Maicrophone 思考中</span>
+                        <span className="flex items-center gap-1 ml-0.5">
+                            {[0, 1, 2].map((i) => (
+                                <span key={i} className="inline-block w-1.5 h-1.5 rounded-full animate-bounce"
+                                    style={{ background: '#8B5CF6', animationDelay: `${i * 0.15}s` }} />
+                            ))}
+                        </span>
                     </div>
                 </div>
             )}
