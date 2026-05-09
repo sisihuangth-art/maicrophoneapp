@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ChatInputBar } from '@/components/chat-input-bar';
@@ -36,8 +37,15 @@ const MILESTONES: Record<number, string> = {
     20: '太神啦！✨',
 };
 
+const NAV_OPTIONS = [
+    { label: '去練音準 🎵', route: '/challenge/pitchmatching' },
+    { label: '去練歌曲挑戰 🎤', route: '/challenge/karaoke' },
+    { label: '回主畫面 🏠', route: '/' },
+];
+
 export default function LongToneChallenge() {
     const user = useAuth();
+    const router = useRouter();
     const [input, setInput] = useState('');
     const [milestone, setMilestone] = useState<string | null>(null);
     const milestoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,7 +58,6 @@ export default function LongToneChallenge() {
     const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const isLoading = !!uploadProgress || status === 'submitted' || status === 'streaming';
 
-    // ① AI 自動開場白
     const hasInitialized = useRef(false);
     useEffect(() => {
         if (!hasInitialized.current && user) {
@@ -73,6 +80,24 @@ export default function LongToneChallenge() {
         return null;
     }, [messages]);
 
+    // ⑤ 偵測 uploadScore 完成
+    const challengeCompleted = useMemo(() => {
+        return messages.some((m) => {
+            if (!Array.isArray(m.parts)) return false;
+            return (m.parts as any[]).some((p: any) => {
+                if (p.type === 'tool-invocation' && p.toolInvocation) {
+                    return p.toolInvocation.toolName?.toLowerCase() === 'uploadscore'
+                        && p.toolInvocation.state === 'result';
+                }
+                if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
+                    return p.type.slice(5).toLowerCase() === 'uploadscore'
+                        && (p.state === 'result' || p.result !== undefined);
+                }
+                return false;
+            });
+        });
+    }, [messages]);
+
     const targetFreq = targetInfo ? noteToFreq(targetInfo.note) : null;
     const recordingUnlocked = targetInfo !== null;
 
@@ -85,7 +110,6 @@ export default function LongToneChallenge() {
         onRecordingStop: detachMeyda,
     });
 
-    // Milestone toasts
     useEffect(() => {
         if (!isRecording) { setMilestone(null); return; }
         const msg = MILESTONES[recordingTime];
@@ -142,9 +166,7 @@ export default function LongToneChallenge() {
     const resetInput = () => { setInput(''); if (isListening) stopListening(); };
     if (!user) return null;
 
-    // ① 過濾掉第一則觸發訊息，不顯示給使用者
     const displayMessages = messages.filter((m, i) => !(i === 0 && m.role === 'user'));
-
     const progressPct = Math.min((recordingTime / 20) * 100, 100);
 
     return (
@@ -181,7 +203,6 @@ export default function LongToneChallenge() {
                 </div>
             </div>
 
-            {/* ③ 進度條固定在 LongtoneVisualizer 上方，不在可捲動區域內 */}
             {isRecording && (
                 <div className="relative w-full max-w-md mx-auto shrink-0 px-5 mb-2">
                     {milestone && (
@@ -200,9 +221,7 @@ export default function LongToneChallenge() {
                             }} />
                     </div>
                     <div className="flex justify-between text-xs mt-1.5" style={{ color: 'rgba(240,235,248,0.35)' }}>
-                        <span>0s</span>
-                        <span>10s</span>
-                        <span>20s</span>
+                        <span>0s</span><span>10s</span><span>20s</span>
                     </div>
                 </div>
             )}
@@ -212,6 +231,26 @@ export default function LongToneChallenge() {
                 isRecording={isRecording} recordingTime={recordingTime}
                 targetNote={targetInfo?.note ?? null}
             />
+
+            {/* ⑤ 關卡完成導航按鈕 */}
+            {challengeCompleted && !isLoading && (
+                <div className="w-full max-w-md mx-auto px-4 pb-2 shrink-0">
+                    <p className="text-xs text-center mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>接下來要去哪裡？</p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                        {NAV_OPTIONS.map((opt) => (
+                            <button key={opt.route} onClick={() => router.push(opt.route)}
+                                className="px-4 py-2 rounded-2xl text-sm font-medium transition-all"
+                                style={{
+                                    background: opt.route === '/' ? 'rgba(139,92,246,0.15)' : 'rgba(6,214,160,0.15)',
+                                    border: opt.route === '/' ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(6,214,160,0.4)',
+                                    color: opt.route === '/' ? '#8B5CF6' : '#06D6A0',
+                                }}>
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <ChatInputBar
                 input={input} onInputChange={setInput} onSubmit={handleSubmit} isLoading={isLoading}
