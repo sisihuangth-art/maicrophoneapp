@@ -10,7 +10,6 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    // If already logged in, redirect
     useEffect(() => {
         const stored = localStorage.getItem('user');
         if (stored) {
@@ -21,13 +20,11 @@ export default function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-
         const trimmed = username.trim();
         if (trimmed.length < 2 || trimmed.length > 20) {
             setError('使用者名稱需要 2–20 個字元');
             return;
         }
-
         setLoading(true);
         try {
             const res = await fetch('/api/login', {
@@ -35,16 +32,14 @@ export default function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: trimmed }),
             });
-
             if (!res.ok) {
                 const data = await res.json();
                 setError(data.error || '登入失敗');
                 return;
             }
-
             const data = await res.json();
             localStorage.setItem('user', JSON.stringify({ userId: data.userId, username: data.username }));
-            router.replace('/');
+            router.replace('/onboarding');
         } catch {
             setError('網路錯誤，請稍後再試');
         } finally {
@@ -53,14 +48,35 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white/10 p-8 backdrop-blur-md shadow-xl">
-                <div className="mb-6 flex flex-col items-center gap-3">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/30">
-                        <Mic className="h-8 w-8 text-purple-200" />
+        <div
+            className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden"
+            style={{ backgroundColor: '#0D0A14' }}
+        >
+            {/* Background glows */}
+            <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)' }} />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(255,45,122,0.12) 0%, transparent 70%)' }} />
+
+            <div className="relative w-full max-w-sm rounded-3xl p-8 backdrop-blur-xl"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="mb-8 flex flex-col items-center gap-3">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full"
+                        style={{ background: 'rgba(255,45,122,0.2)', border: '1px solid rgba(255,45,122,0.4)' }}>
+                        <Mic className="h-8 w-8" style={{ color: '#FF2D7A' }} />
                     </div>
-                    <h1 className="text-2xl font-bold text-white">MAIcrophone</h1>
-                    <p className="text-sm text-purple-200">用 AI 挑戰你的歌唱實力</p>
+                    <h1
+                        className="text-3xl font-extrabold"
+                        style={{
+                            fontFamily: "'Bricolage Grotesque', sans-serif",
+                            background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                        }}
+                    >
+                        Maicrophone
+                    </h1>
+                    <p className="text-sm" style={{ color: 'rgba(240,235,248,0.5)' }}>歌唱力養成森林，等你來探索</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -70,15 +86,22 @@ export default function LoginPage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         maxLength={20}
-                        className="rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-white/50 outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+                        className="rounded-2xl px-4 py-3 text-white outline-none transition-all"
+                        style={{
+                            background: 'rgba(255,255,255,0.07)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                        }}
+                        onFocus={(e) => (e.target.style.border = '1px solid #8B5CF6')}
+                        onBlur={(e) => (e.target.style.border = '1px solid rgba(255,255,255,0.12)')}
                     />
-                    {error && <p className="text-sm text-red-300">{error}</p>}
+                    {error && <p className="text-sm" style={{ color: '#FF2D7A' }}>{error}</p>}
                     <button
                         type="submit"
                         disabled={loading}
-                        className="rounded-lg bg-purple-600 px-4 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-50"
+                        className="rounded-2xl py-3 font-bold text-white transition-opacity disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)' }}
                     >
-                        {loading ? '登入中...' : '開始挑戰'}
+                        {loading ? '登入中...' : '進入森林 🎤'}
                     </button>
                 </form>
             </div>

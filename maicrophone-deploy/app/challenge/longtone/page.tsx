@@ -2,9 +2,9 @@
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { ArrowLeft, LogOut, Wind } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ChatInputBar } from '@/components/chat-input-bar';
 import { ChatMessages } from '@/components/chat-messages';
@@ -29,12 +29,18 @@ function noteToFreq(note: string): number {
     return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-/** Regex to detect the target note JSON e.g. {"note": "E4", "vowel": "Ah"} */
 const TARGET_NOTE_RE = /\{\s*"note"\s*:\s*"([A-Ga-g]#?\d)"\s*,\s*"vowel"\s*:\s*"(\w+)"\s*\}/;
+
+const MILESTONES: Record<number, string> = {
+    10: '還不錯！🎵',
+    20: '太神啦！✨',
+};
 
 export default function LongToneChallenge() {
     const user = useAuth();
     const [input, setInput] = useState('');
+    const [milestone, setMilestone] = useState<string | null>(null);
+    const milestoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { messages, sendMessage, setMessages, status } = useChat({
         transport: new DefaultChatTransport({
@@ -44,7 +50,6 @@ export default function LongToneChallenge() {
     const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const isLoading = !!uploadProgress || status === 'submitted' || status === 'streaming';
 
-    // ─── Extract latest target note from AI messages ───
     const targetInfo = useMemo(() => {
         for (let i = messages.length - 1; i >= 0; i--) {
             const m = messages[i];
@@ -52,9 +57,7 @@ export default function LongToneChallenge() {
             for (const p of m.parts) {
                 if ((p as any).type === 'text' && typeof (p as any).text === 'string') {
                     const match = (p as any).text.match(TARGET_NOTE_RE);
-                    if (match) {
-                        return { note: match[1], vowel: match[2] };
-                    }
+                    if (match) return { note: match[1], vowel: match[2] };
                 }
             }
         }
@@ -62,64 +65,53 @@ export default function LongToneChallenge() {
     }, [messages]);
 
     const targetFreq = targetInfo ? noteToFreq(targetInfo.note) : null;
+    const recordingUnlocked = targetInfo !== null;
 
-    // ─── Hooks ───
     const { isListening, stop: stopListening, toggle: toggleListening } = useSpeechToText(
         useCallback((transcript: string) => setInput(transcript), []),
     );
-
     const { features, rmsHistory, attach: attachMeyda, detach: detachMeyda } = useMeyda(targetFreq);
-
-    const {
-        isRecording,
-        recordingTime,
-        audioAttachment,
-        startRecording,
-        stopRecording,
-        clearAttachment,
-    } = useAudioRecorder({
+    const { isRecording, recordingTime, audioAttachment, startRecording, stopRecording, clearAttachment } = useAudioRecorder({
         onWorkletReady: attachMeyda,
         onRecordingStop: detachMeyda,
     });
 
-    // ─── Submit handler ───
+    // Milestone toasts
+    useEffect(() => {
+        if (!isRecording) { setMilestone(null); return; }
+        const msg = MILESTONES[recordingTime];
+        if (msg) {
+            setMilestone(msg);
+            if (milestoneTimer.current) clearTimeout(milestoneTimer.current);
+            milestoneTimer.current = setTimeout(() => setMilestone(null), 2500);
+        }
+    }, [isRecording, recordingTime]);
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (isLoading) return;
         if (!input.trim() && !audioAttachment) return;
-
         const currentInput = input;
         const currentAudio = audioAttachment;
-
         resetInput();
         if (currentAudio) clearAttachment();
-
         const parts: Array<{ type: string; text?: string; mediaType?: string; url?: string }> = [];
         if (currentInput.trim()) parts.push({ type: 'text', text: currentInput });
-
         if (currentAudio) {
             const optimisticParts: typeof parts = [...parts];
             if (!optimisticParts.some((p) => p.type === 'text' && p.text?.trim())) {
                 optimisticParts.unshift({ type: 'text', text: '🎤 Audio recording' });
             }
             const optimisticId = `optimistic-${Date.now()}`;
-            setMessages((prev) => [
-                ...prev,
-                { id: optimisticId, role: 'user', parts: optimisticParts } as any,
-            ]);
-
+            setMessages((prev) => [...prev, { id: optimisticId, role: 'user', parts: optimisticParts } as any]);
             setUploadProgress('Uploading audio…');
             const formData = new FormData();
             formData.append('file', currentAudio.blob, 'recording.wav');
-            if (user?.userId) {
-                formData.append('userId', user.userId);
-            }
-
+            if (user?.userId) formData.append('userId', user.userId);
             try {
                 const res = await fetch('/api/upload-audio', { method: 'POST', body: formData });
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.error);
-
                 parts.push({ type: 'file', mediaType: 'audio/wav', url: json.data.url });
             } catch (err) {
                 console.error('Audio upload failed:', err);
@@ -128,10 +120,8 @@ export default function LongToneChallenge() {
                 setUploadProgress(null);
                 return;
             }
-
             setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
             setUploadProgress('Analyzing audio…');
-
             if (!parts.some((p) => p.type === 'text' && p.text?.trim())) {
                 parts.unshift({ type: 'text', text: '這是我的錄音，請幫我分析！' });
             }
@@ -140,74 +130,83 @@ export default function LongToneChallenge() {
         setUploadProgress(null);
     };
 
-    const resetInput = () => {
-        setInput('');
-        if (isListening) stopListening();
-    };
-
+    const resetInput = () => { setInput(''); if (isListening) stopListening(); };
     if (!user) return null;
 
-    return (
-        <main className="flex flex-col items-center justify-between min-h-screen bg-zinc-950 text-white font-sans p-6 overflow-hidden relative">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+    const progressPct = Math.min((recordingTime / 20) * 100, 100);
 
-            <div className="relative z-10 flex flex-col items-center space-y-6 text-center max-w-3xl w-full flex-1 min-h-0 pt-4">
-                {/* Header */}
-                <header className="space-y-4 shrink-0 relative w-full">
-                    <Link
-                        href="/"
-                        className="absolute left-0 top-0 flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:border-zinc-500 transition"
-                    >
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                        返回首頁
+    return (
+        <main className="flex flex-col items-center justify-between min-h-screen text-white p-5 overflow-hidden relative"
+            style={{ backgroundColor: '#0D0A14' }}>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(6,214,160,0.07) 0%, transparent 70%)' }} />
+
+            <div className="relative z-10 flex flex-col items-center space-y-5 text-center max-w-3xl w-full flex-1 min-h-0 pt-4">
+                <header className="space-y-3 shrink-0 relative w-full">
+                    <Link href="/" className="absolute left-0 top-0 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs transition"
+                        style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(240,235,248,0.5)' }}>
+                        <ArrowLeft className="w-3.5 h-3.5" /> 返回首頁
                     </Link>
                     {user && (
-                        <button
-                            onClick={logout}
-                            className="absolute right-0 top-0 flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:border-zinc-500 transition"
-                        >
-                            <LogOut className="w-3.5 h-3.5" />
-                            登出
+                        <button onClick={logout} className="absolute right-0 top-0 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs transition"
+                            style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(240,235,248,0.5)' }}>
+                            <LogOut className="w-3.5 h-3.5" /> 登出
                         </button>
                     )}
-                    <div className="inline-flex items-center justify-center p-3 bg-zinc-900 border border-zinc-800 rounded-2xl mb-2 shadow-xl">
-                        <Wind className="w-8 h-8 text-cyan-400" />
+                    <div className="inline-flex items-center justify-center p-3 rounded-2xl mb-1"
+                        style={{ background: 'rgba(6,214,160,0.15)', border: '1px solid rgba(6,214,160,0.3)' }}>
+                        <span className="text-2xl">🌊</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-cyan-300 to-teal-500 bg-clip-text text-transparent pb-2">
+                    <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight pb-1"
+                        style={{ background: 'linear-gradient(135deg, #06D6A0, #8B5CF6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         一口氣到底
                     </h1>
-                    <p className="text-base text-zinc-400 font-medium">氣息控制挑戰 — 穩定、持久地唱出目標音！</p>
+                    <p className="text-sm" style={{ color: 'rgba(240,235,248,0.5)' }}>氣息控制挑戰 — 穩定、持久地唱出目標音！</p>
                 </header>
 
-                {/* Messages */}
-                <div className="flex-1 min-h-0 w-full overflow-y-auto space-y-4 p-4 text-left font-medium">
+                {/* Progress bar during recording */}
+                {isRecording && (
+                    <div className="relative w-full max-w-md mx-auto shrink-0">
+                        {milestone && (
+                            <div className="milestone-toast absolute -top-9 left-1/2 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap z-20"
+                                style={{ background: '#FFD93D', color: '#0D0A14', transform: 'translateX(-50%)' }}>
+                                {milestone}
+                            </div>
+                        )}
+                        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                            <div className="h-full rounded-full transition-all duration-1000"
+                                style={{
+                                    width: `${progressPct}%`,
+                                    background: progressPct >= 100
+                                        ? 'linear-gradient(90deg, #06D6A0, #FFD93D)'
+                                        : 'linear-gradient(90deg, #06D6A0, #8B5CF6)',
+                                }} />
+                        </div>
+                        <div className="flex justify-between text-xs mt-1.5" style={{ color: 'rgba(240,235,248,0.35)' }}>
+                            <span>0s</span>
+                            <span>10s</span>
+                            <span>20s</span>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 text-left font-medium">
                     <ChatMessages messages={messages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
                 </div>
             </div>
 
-            {/* Real-time visualizer */}
             <LongtoneVisualizer
-                features={features}
-                rmsHistory={rmsHistory}
-                isRecording={isRecording}
-                recordingTime={recordingTime}
+                features={features} rmsHistory={rmsHistory}
+                isRecording={isRecording} recordingTime={recordingTime}
                 targetNote={targetInfo?.note ?? null}
             />
 
-            {/* Input bar */}
             <ChatInputBar
-                input={input}
-                onInputChange={setInput}
-                onSubmit={handleSubmit}
-                isLoading={isLoading}
-                isListening={isListening}
-                onToggleListening={toggleListening}
-                isRecording={isRecording}
-                recordingTime={recordingTime}
-                audioAttachment={audioAttachment}
-                onStartRecording={startRecording}
-                onStopRecording={stopRecording}
-                onClearAttachment={clearAttachment}
+                input={input} onInputChange={setInput} onSubmit={handleSubmit} isLoading={isLoading}
+                isListening={isListening} onToggleListening={toggleListening}
+                isRecording={isRecording} recordingTime={recordingTime} audioAttachment={audioAttachment}
+                onStartRecording={startRecording} onStopRecording={stopRecording} onClearAttachment={clearAttachment}
+                recordingUnlocked={recordingUnlocked}
             />
         </main>
     );

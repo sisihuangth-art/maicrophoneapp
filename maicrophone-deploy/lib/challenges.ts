@@ -15,6 +15,10 @@ function loadPrompt(name: string): string {
 }
 
 const challenges: Record<string, ChallengeConfig> = {
+    onboarding: {
+        system: loadPrompt('onboarding'),
+        tools: () => ({}),
+    },
     pitchmatching: {
         system: loadPrompt('pitchmatching'),
         tools: (userId) => makePitchMatchingTools(userId),

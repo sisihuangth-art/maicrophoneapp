@@ -1,1 +1,26 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap');
+
+:root {
+  --c-bg: #0D0A14;
+  --c-pink: #FF2D7A;
+  --c-purple: #8B5CF6;
+  --c-gold: #FFD93D;
+  --c-green: #06D6A0;
+}
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background-color: var(--c-bg);
+}
+
+@keyframes milestone-pop {
+  0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+  20% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+  80% { transform: translateX(-50%) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 0; }
+}
+
+.milestone-toast {
+  animation: milestone-pop 2.5s ease forwards;
+}
