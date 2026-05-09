@@ -1,0 +1,44 @@
+{
+  "name": "maicrophone",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.67",
+    "@ai-sdk/react": "^3.0.176",
+    "@langfuse/otel": "^5.3.0",
+    "@langfuse/tracing": "^5.3.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-trace-node": "^2.7.1",
+    "@supabase/supabase-js": "^2.105.3",
+    "ai": "^6.0.174",
+    "clsx": "^2.1.1",
+    "langfuse": "^3.38.20",
+    "lucide-react": "^0.553.0",
+    "meyda": "^5.6.3",
+    "next": "15.4.9",
+    "pitchy": "^4.1.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "tone": "^15.1.22",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.9",
+    "postcss": "^8.5.13",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Maicrophone",
+  "description": "AI Vocal Coach agent",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
