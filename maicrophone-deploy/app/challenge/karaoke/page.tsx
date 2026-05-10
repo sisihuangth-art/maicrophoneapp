@@ -17,29 +17,37 @@ import { getUser, logout } from '@/lib/auth';
 const NAV_OPTIONS = [
     { label: '去練音準 🎵', route: '/challenge/pitchmatching' },
     { label: '去練氣息控制 🌊', route: '/challenge/longtone' },
-    { label: '回主畫面 🏠', route: '/' },
+    { label: '村莊列表 🌿', route: '/' },
 ];
 
 function ForestBackground() {
     return (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', height: '38vh', pointerEvents: 'none', zIndex: 2 }}>
-            <svg viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg"
+        <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', height: '43vh', pointerEvents: 'none', zIndex: 2 }}>
+            <svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg"
                 preserveAspectRatio="xMidYMax slice" style={{ width: '100%', height: '100%' }}>
-                <polygon points="160,160 182,260 138,260" fill="rgba(80,30,110,0.3)" />
-                <polygon points="260,170 285,260 235,260" fill="rgba(75,25,105,0.3)" />
-                <polygon points="65,110  95,260  35,260"  fill="rgba(55,15,90,0.55)" />
-                <polygon points="210,100 248,260 172,260" fill="rgba(50,12,85,0.5)" />
-                <polygon points="355,115 388,260 322,260" fill="rgba(55,15,90,0.55)" />
-                <polygon points="-15,5   32,260 -62,260"  fill="rgba(22,6,42,0.92)" />
-                <polygon points="42,-10  88,260  -4,260"  fill="rgba(18,4,36,0.95)" />
-                <polygon points="115,25 155,260  75,260"  fill="rgba(22,6,42,0.85)" />
-                <polygon points="305,35 345,260 265,260"  fill="rgba(22,6,42,0.85)" />
-                <polygon points="370,-5 415,260 325,260"  fill="rgba(18,4,36,0.95)" />
-                <polygon points="432,10 475,260 389,260"  fill="rgba(22,6,42,0.92)" />
-                <polygon points="42,25  65,82   19,82"   fill="rgba(18,4,36,0.95)" />
-                <polygon points="370,30 393,88  347,88"  fill="rgba(18,4,36,0.95)" />
-                <polygon points="115,70 138,128  92,128" fill="rgba(22,6,42,0.85)" />
-                <polygon points="305,80 328,135 282,135" fill="rgba(22,6,42,0.85)" />
+                {/* 遠景樹：淡紫，製造景深 */}
+                <polygon points="160,175 185,280 135,280" fill="rgba(110,45,155,0.38)" />
+                <polygon points="260,185 290,280 230,280" fill="rgba(100,38,145,0.38)" />
+                <polygon points="50,155 82,280 18,280"   fill="rgba(90,30,135,0.42)" />
+                <polygon points="340,150 378,280 302,280" fill="rgba(90,30,135,0.42)" />
+                {/* 中景樹：深紫，主要剪影 */}
+                <polygon points="65,108  97,280  33,280"  fill="rgba(48,10,88,0.72)" />
+                <polygon points="210,98 252,280 168,280"  fill="rgba(44,8,80,0.68)" />
+                <polygon points="355,112 392,280 318,280" fill="rgba(48,10,88,0.72)" />
+                {/* 近景樹：近黑，最前層 */}
+                <polygon points="-15,18  34,280 -64,280"  fill="rgba(14,4,28,0.97)" />
+                <polygon points="42,-8   91,280  -7,280"  fill="rgba(11,3,24,0.98)" />
+                <polygon points="115,28 160,280  70,280"  fill="rgba(14,4,28,0.93)" />
+                <polygon points="305,38 350,280 260,280"  fill="rgba(14,4,28,0.93)" />
+                <polygon points="370,-2 420,280 320,280"  fill="rgba(11,3,24,0.98)" />
+                <polygon points="432,12 480,280 384,280"  fill="rgba(14,4,28,0.97)" />
+                {/* 近景樹的上層分枝 */}
+                <polygon points="42,28  66,88  18,88"    fill="rgba(11,3,24,0.98)" />
+                <polygon points="370,32 394,92 346,92"   fill="rgba(11,3,24,0.98)" />
+                <polygon points="115,72 140,132 90,132"  fill="rgba(14,4,28,0.93)" />
+                <polygon points="305,82 330,138 280,138" fill="rgba(14,4,28,0.93)" />
+                {/* 地面 */}
+                <rect x="-10" y="260" width="440" height="30" fill="rgba(10,3,20,0.99)" />
             </svg>
         </div>
     );
@@ -66,7 +74,7 @@ export default function KaraokeChallenge() {
         }
     }, [user]); // eslint-disable-line
 
-    // ⑤ 錄音送出後設旗標
+    // 錄音送出後設旗標
     const [audioSubmitted, setAudioSubmitted] = useState(false);
     const showNavButtons = audioSubmitted && !isLoading;
 
@@ -116,7 +124,7 @@ export default function KaraokeChallenge() {
             if (!parts.some((p) => p.type === 'text' && p.text?.trim())) parts.unshift({ type: 'text', text: '這是我的錄音，請幫我分析！' });
             sendMessage({ role: 'user', parts: parts as any });
             setUploadProgress(null);
-            setAudioSubmitted(true); // ⑤ 設旗標
+            setAudioSubmitted(true);
             return;
         }
         sendMessage({ parts: parts as any, role: 'user' });
@@ -152,13 +160,15 @@ export default function KaraokeChallenge() {
                         <p className="text-xs font-medium" style={{ color: 'rgba(255,45,122,0.7)' }}>第三關 · 歌曲挑戰</p>
                         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight"
                             style={{ background: 'linear-gradient(135deg, #FF2D7A, #FFD93D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                            K哥之王
+                            星耀鎮
                         </h1>
-                        <p className="text-xs" style={{ color: 'rgba(240,235,248,0.4)' }}>唱出你的舞台感！</p>
+                        <p className="text-xs" style={{ color: 'rgba(240,235,248,0.4)' }}>K哥之王</p>
                     </header>
 
-                    <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 text-left font-medium">
-                        <ChatMessages messages={displayMessages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
+                    <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 font-medium">
+                        <div className="max-w-lg mx-auto">
+                            <ChatMessages messages={displayMessages as any} isLoading={isLoading} uploadProgress={uploadProgress} />
+                        </div>
                     </div>
                 </div>
 
