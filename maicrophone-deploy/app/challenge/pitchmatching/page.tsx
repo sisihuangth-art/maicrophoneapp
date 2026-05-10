@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatInputBar } from '@/components/chat-input-bar';
 import { ChatMessages } from '@/components/chat-messages';
 import { PitchVisualizer } from '@/components/pitch-visualizer';
+import { RadarChartModal } from '@/components/radar-chart-modal';
 import { useAudioRecorder } from '@/hooks/use-audio-recorder';
 import { useAuth } from '@/hooks/use-auth';
 import { usePitchDetection } from '@/hooks/use-pitch-detection';
@@ -24,36 +25,38 @@ const NAV_OPTIONS = [
 
 function ForestBackground() {
     return (
-        <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '480px', height: '43vh', pointerEvents: 'none', zIndex: 2 }}>
+        <div style={{
+            position: 'fixed', bottom: 0,
+            left: '50%', transform: 'translateX(-50%)',
+            width: '100%', maxWidth: '480px',
+            height: '43vh', pointerEvents: 'none', zIndex: 2,
+        }}>
             <svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg"
                 preserveAspectRatio="xMidYMax slice" style={{ width: '100%', height: '100%' }}>
-                {/* 遠景樹：淡紫，製造景深 */}
                 <polygon points="160,175 185,280 135,280" fill="rgba(110,45,155,0.38)" />
                 <polygon points="260,185 290,280 230,280" fill="rgba(100,38,145,0.38)" />
                 <polygon points="50,155 82,280 18,280"   fill="rgba(90,30,135,0.42)" />
                 <polygon points="340,150 378,280 302,280" fill="rgba(90,30,135,0.42)" />
-                {/* 中景樹：深紫，主要剪影 */}
                 <polygon points="65,108  97,280  33,280"  fill="rgba(48,10,88,0.72)" />
                 <polygon points="210,98 252,280 168,280"  fill="rgba(44,8,80,0.68)" />
                 <polygon points="355,112 392,280 318,280" fill="rgba(48,10,88,0.72)" />
-                {/* 近景樹：近黑，最前層 */}
                 <polygon points="-15,18  34,280 -64,280"  fill="rgba(14,4,28,0.97)" />
                 <polygon points="42,-8   91,280  -7,280"  fill="rgba(11,3,24,0.98)" />
                 <polygon points="115,28 160,280  70,280"  fill="rgba(14,4,28,0.93)" />
                 <polygon points="305,38 350,280 260,280"  fill="rgba(14,4,28,0.93)" />
                 <polygon points="370,-2 420,280 320,280"  fill="rgba(11,3,24,0.98)" />
                 <polygon points="432,12 480,280 384,280"  fill="rgba(14,4,28,0.97)" />
-                {/* 近景樹的上層分枝 */}
                 <polygon points="42,28  66,88  18,88"    fill="rgba(11,3,24,0.98)" />
                 <polygon points="370,32 394,92 346,92"   fill="rgba(11,3,24,0.98)" />
                 <polygon points="115,72 140,132 90,132"  fill="rgba(14,4,28,0.93)" />
                 <polygon points="305,82 330,138 280,138" fill="rgba(14,4,28,0.93)" />
-                {/* 地面 */}
                 <rect x="-10" y="260" width="440" height="30" fill="rgba(10,3,20,0.99)" />
             </svg>
         </div>
     );
 }
+
+interface Scores { pitch: number; stability: number; rhythm: number; expression: number; technique: number; }
 
 export default function DoReMiChallenge() {
     const user = useAuth();
@@ -68,7 +71,6 @@ export default function DoReMiChallenge() {
     const [uploadProgress, setUploadProgress] = useState<string | null>(null);
     const isLoading = !!uploadProgress || status === 'submitted' || status === 'streaming';
 
-    // 自動開場白
     const hasInitialized = useRef(false);
     useEffect(() => {
         if (!hasInitialized.current && user) {
@@ -77,9 +79,23 @@ export default function DoReMiChallenge() {
         }
     }, [user]); // eslint-disable-line
 
-    // 錄音送出後設旗標，AI 回覆完就顯示導航按鈕
     const [audioSubmitted, setAudioSubmitted] = useState(false);
     const showNavButtons = audioSubmitted && !isLoading;
+
+    const [radarScores, setRadarScores] = useState<Scores | null>(null);
+    useEffect(() => {
+        if (!showNavButtons || !user) return;
+        fetch(`/api/users/${user.userId}`)
+            .then((res) => res.json())
+            .then((data) => {
+                const s: Scores = data?.scores;
+                if (!s) return;
+                if (s.pitch > 0 && s.stability > 0 && s.rhythm > 0 && s.expression > 0 && s.technique > 0) {
+                    setRadarScores(s);
+                }
+            })
+            .catch(console.error);
+    }, [showNavButtons]); // eslint-disable-line
 
     const NOTE_ARRAY_RE = /\[\s*"[A-Ga-g][#b]?\d"(?:\s*,\s*"[A-Ga-g][#b]?\d")*\s*\]/;
     const targetNotes = useMemo(() => {
@@ -152,12 +168,11 @@ export default function DoReMiChallenge() {
 
     return (
         <>
-            {/* 森林背景：fixed，放在 main 外，不受 overflow 影響 */}
             <ForestBackground />
+            {radarScores && <RadarChartModal scores={radarScores} onClose={() => setRadarScores(null)} />}
 
             <main className="flex flex-col items-center justify-between min-h-screen text-white p-5 overflow-x-hidden relative"
                 style={{ backgroundColor: '#0D0A14' }}>
-
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
                     style={{ zIndex: 0, background: 'radial-gradient(circle, rgba(255,45,122,0.07) 0%, transparent 70%)' }} />
 
@@ -190,7 +205,6 @@ export default function DoReMiChallenge() {
 
                 <div style={{ position: 'relative', zIndex: 10, width: '100%' }}>
                     <PitchVisualizer pitch={pitch} isRecording={isRecording} targetNotes={targetNotes} />
-
                     {showNavButtons && (
                         <div className="w-full max-w-md mx-auto px-4 pb-2">
                             <p className="text-xs text-center mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>接下來要去哪裡？</p>
@@ -205,7 +219,6 @@ export default function DoReMiChallenge() {
                             </div>
                         </div>
                     )}
-
                     <ChatInputBar
                         input={input} onInputChange={setInput} onSubmit={handleSubmit} isLoading={isLoading}
                         isListening={isListening} onToggleListening={toggleListening}
