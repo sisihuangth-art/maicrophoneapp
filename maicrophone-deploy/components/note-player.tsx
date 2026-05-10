@@ -21,10 +21,9 @@ function noteToMidi(note: string): number {
     return (octave + 1) * 12 + semitone;
 }
 
-// ── 階梯位置計算 ────────────────────────────────────────────────
-const CONTAINER_H = 130; // px，容器高度
-const PILL_H = 34;       // px，pill 高度
-const VERTICAL_RANGE = CONTAINER_H - PILL_H; // 可用垂直空間
+const CONTAINER_H = 130;
+const PILL_H = 34;
+const VERTICAL_RANGE = CONTAINER_H - PILL_H;
 
 function computePositions(notes: string[]) {
     const midis = notes.map(noteToMidi);
@@ -33,10 +32,9 @@ function computePositions(notes: string[]) {
     const midiRange = maxMidi - minMidi;
 
     return notes.map((_, i) => {
-        // 音高相同時全部置中，否則依音高計算
         const normalized = midiRange === 0 ? 0.5 : (midis[i] - minMidi) / midiRange;
-        const centerX = (i + 0.5) * 100 / notes.length; // 0–100，百分比
-        const centerY = PILL_H / 2 + (1 - normalized) * VERTICAL_RANGE; // px，高音靠上
+        const centerX = (i + 0.5) * 100 / notes.length;
+        const centerY = PILL_H / 2 + (1 - normalized) * VERTICAL_RANGE;
         return { centerX, centerY };
     });
 }
@@ -74,11 +72,9 @@ export function NotePlayer({ notes }: NotePlayerProps) {
 
     return (
         <div className="mt-2 space-y-3">
-
-            {/* ── 階梯音符區 ── */}
             <div className="relative w-full" style={{ height: `${CONTAINER_H}px` }}>
 
-                {/* SVG 虛線連接各音符 */}
+                {/* SVG 虛線連接 */}
                 <svg
                     width="100%"
                     height={CONTAINER_H}
@@ -91,10 +87,8 @@ export function NotePlayer({ notes }: NotePlayerProps) {
                         return (
                             <line
                                 key={i}
-                                x1={pos.centerX}
-                                y1={pos.centerY}
-                                x2={next.centerX}
-                                y2={next.centerY}
+                                x1={pos.centerX} y1={pos.centerY}
+                                x2={next.centerX} y2={next.centerY}
                                 stroke={activeIndex === i || activeIndex === i + 1
                                     ? 'rgba(255,45,122,0.6)'
                                     : 'rgba(255,255,255,0.15)'}
@@ -106,7 +100,7 @@ export function NotePlayer({ notes }: NotePlayerProps) {
                     })}
                 </svg>
 
-                {/* 音符 Pills */}
+                {/* 音符 Pills — ✅ transform 只出現一次，合併 base + active */}
                 {notes.map((note, i) => {
                     const { centerX, centerY } = positions[i];
                     const isActive = activeIndex === i;
@@ -118,29 +112,28 @@ export function NotePlayer({ notes }: NotePlayerProps) {
                                 left: `${centerX}%`,
                                 top: `${centerY - PILL_H / 2}px`,
                                 height: `${PILL_H}px`,
-                                transform: 'translateX(-50%)',
                                 whiteSpace: 'nowrap',
-                                ...(isActive
-                                    ? {
-                                        background: 'rgba(255,45,122,0.25)',
-                                        borderColor: 'rgba(255,45,122,0.7)',
-                                        color: '#FF2D7A',
-                                        boxShadow: '0 0 12px rgba(255,45,122,0.35)',
-                                        transform: 'translateX(-50%) scale(1.12)',
-                                    }
-                                    : {
-                                        background: 'rgba(255,255,255,0.06)',
-                                        borderColor: 'rgba(255,255,255,0.15)',
-                                        color: 'rgba(240,235,248,0.75)',
-                                    })
+                                // ✅ 修：transform 只寫一次，active 時加上 scale
+                                transform: isActive
+                                    ? 'translateX(-50%) scale(1.12)'
+                                    : 'translateX(-50%)',
+                                background: isActive
+                                    ? 'rgba(255,45,122,0.25)'
+                                    : 'rgba(255,255,255,0.06)',
+                                borderColor: isActive
+                                    ? 'rgba(255,45,122,0.7)'
+                                    : 'rgba(255,255,255,0.15)',
+                                color: isActive
+                                    ? '#FF2D7A'
+                                    : 'rgba(240,235,248,0.75)',
+                                boxShadow: isActive
+                                    ? '0 0 12px rgba(255,45,122,0.35)'
+                                    : undefined,
                             }}
                         >
                             <Volume2
                                 className="w-3 h-3"
-                                style={{
-                                    opacity: isActive ? 1 : 0.35,
-                                    ...(isActive ? { animation: 'pulse 1s infinite' } : {}),
-                                }}
+                                style={{ opacity: isActive ? 1 : 0.35 }}
                             />
                             {note}
                         </div>
