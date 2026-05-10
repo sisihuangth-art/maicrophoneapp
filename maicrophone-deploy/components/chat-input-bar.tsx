@@ -30,16 +30,25 @@ export function ChatInputBar({
 }: ChatInputBarProps) {
 
     const canRecord = recordingUnlocked && !isLoading;
+    const showRecordingCTA = recordingUnlocked && !isRecording && !audioAttachment && !isLoading;
 
     return (
         <div className="relative z-10 w-full max-w-3xl shrink-0 pb-4 space-y-2">
-            {/* Unlocked hint */}
-            {recordingUnlocked && !isRecording && !audioAttachment && (
-                <div className="flex justify-center">
-                    <span className="text-xs font-medium px-3 py-1 rounded-full animate-pulse"
-                        style={{ background: 'rgba(255,45,122,0.15)', color: '#FF2D7A', border: '1px solid rgba(255,45,122,0.3)' }}>
-                        🎤 可以開始錄音了！
-                    </span>
+
+            {/* ✅ 問題10：錄音解鎖後顯示明確的行動指引 */}
+            {showRecordingCTA && (
+                <div className="flex flex-col items-center gap-1">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full"
+                        style={{
+                            background: 'rgba(255,45,122,0.15)',
+                            border: '1px solid rgba(255,45,122,0.4)',
+                        }}>
+                        <span className="text-sm font-bold" style={{ color: '#FF2D7A' }}>
+                            🎤 現在請按下麥克風按鈕開始錄音！
+                        </span>
+                    </div>
+                    {/* 指向錄音按鈕的箭頭 */}
+                    <div className="animate-bounce" style={{ color: '#FF2D7A', fontSize: '18px' }}>↓</div>
                 </div>
             )}
 
@@ -81,25 +90,26 @@ export function ChatInputBar({
                     {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </button>
 
-                {/* Record audio button — main CTA */}
+                {/* Record audio button */}
                 {isRecording ? (
                     <button type="button" onClick={onStopRecording}
                         className="p-4 rounded-full flex-shrink-0 transition-all"
                         style={{
                             background: '#FF2D7A',
                             boxShadow: '0 0 20px rgba(255,45,122,0.6)',
-                            animation: 'pulse 1s ease-in-out infinite',
                         }}
                         title="停止錄音"
                     >
                         <Square className="w-5 h-5 fill-white text-white" />
                     </button>
                 ) : recordingUnlocked ? (
+                    // ✅ 解鎖後：更強烈的發光 + 雙層 ring 動畫
                     <button type="button" onClick={onStartRecording} disabled={!canRecord}
-                        className="p-4 rounded-full flex-shrink-0 transition-all hover:scale-105"
+                        className="relative p-4 rounded-full flex-shrink-0 transition-all hover:scale-105"
                         style={{
                             background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)',
-                            boxShadow: '0 0 24px rgba(255,45,122,0.45)',
+                            boxShadow: '0 0 32px rgba(255,45,122,0.7), 0 0 60px rgba(255,45,122,0.3)',
+                            animation: 'pulse 1.5s ease-in-out infinite',
                         }}
                         title="開始錄音唱歌"
                     >

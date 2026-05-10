@@ -51,18 +51,15 @@ export default function KaraokeChallenge() {
         });
     }, [messages]);
 
-    // ⑤ 偵測 uploadScore 完成（karaoke 會呼叫三次，偵測到第一次就顯示）
     const challengeCompleted = useMemo(() => {
         return messages.some((m) => {
             if (!Array.isArray(m.parts)) return false;
             return (m.parts as any[]).some((p: any) => {
                 if (p.type === 'tool-invocation' && p.toolInvocation) {
-                    return p.toolInvocation.toolName?.toLowerCase() === 'uploadscore'
-                        && p.toolInvocation.state === 'result';
+                    return p.toolInvocation.toolName?.toLowerCase() === 'uploadscore' && p.toolInvocation.state === 'result';
                 }
                 if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
-                    return p.type.slice(5).toLowerCase() === 'uploadscore'
-                        && (p.state === 'result' || p.result !== undefined);
+                    return p.type.slice(5).toLowerCase() === 'uploadscore' && (p.state === 'result' || p.result !== undefined);
                 }
                 return false;
             });
@@ -86,9 +83,7 @@ export default function KaraokeChallenge() {
         if (currentInput.trim()) parts.push({ type: 'text', text: currentInput });
         if (currentAudio) {
             const optimisticParts: typeof parts = [...parts];
-            if (!optimisticParts.some((p) => p.type === 'text' && p.text?.trim())) {
-                optimisticParts.unshift({ type: 'text', text: '🎤 Audio recording' });
-            }
+            if (!optimisticParts.some((p) => p.type === 'text' && p.text?.trim())) optimisticParts.unshift({ type: 'text', text: '🎤 Audio recording' });
             const optimisticId = `optimistic-${Date.now()}`;
             setMessages((prev) => [...prev, { id: optimisticId, role: 'user', parts: optimisticParts } as any]);
             setUploadProgress('Uploading audio…');
@@ -109,9 +104,7 @@ export default function KaraokeChallenge() {
             }
             setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
             setUploadProgress('Analyzing audio…');
-            if (!parts.some((p) => p.type === 'text' && p.text?.trim())) {
-                parts.unshift({ type: 'text', text: '這是我的錄音，請幫我分析！' });
-            }
+            if (!parts.some((p) => p.type === 'text' && p.text?.trim())) parts.unshift({ type: 'text', text: '這是我的錄音，請幫我分析！' });
             sendMessage({ role: 'user', parts: parts as any });
             setUploadProgress(null);
             return;
@@ -127,11 +120,13 @@ export default function KaraokeChallenge() {
     return (
         <main className="flex flex-col items-center justify-between min-h-screen text-white p-5 overflow-hidden relative"
             style={{ backgroundColor: '#0D0A14' }}>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
-                style={{ background: 'radial-gradient(circle, rgba(255,217,61,0.07) 0%, transparent 70%)' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(255,45,122,0.08) 0%, transparent 70%)' }} />
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)' }} />
 
             <div className="relative z-10 flex flex-col items-center space-y-5 text-center max-w-3xl w-full flex-1 min-h-0 pt-4">
-                <header className="space-y-3 shrink-0 relative w-full">
+                <header className="space-y-2 shrink-0 relative w-full">
                     <Link href="/" className="absolute left-0 top-0 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs transition"
                         style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(240,235,248,0.5)' }}>
                         <ArrowLeft className="w-3.5 h-3.5" /> 返回首頁
@@ -142,15 +137,18 @@ export default function KaraokeChallenge() {
                             <LogOut className="w-3.5 h-3.5" /> 登出
                         </button>
                     )}
-                    <div className="inline-flex items-center justify-center p-3 rounded-2xl mb-1"
-                        style={{ background: 'rgba(255,217,61,0.15)', border: '1px solid rgba(255,217,61,0.3)' }}>
+                    <div className="inline-flex items-center justify-center p-3 rounded-2xl"
+                        style={{ background: 'rgba(255,45,122,0.15)', border: '1px solid rgba(255,45,122,0.3)' }}>
                         <span className="text-2xl">🎤</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight pb-1"
-                        style={{ background: 'linear-gradient(135deg, #FFD93D, #FF2D7A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        K哥之王
-                    </h1>
-                    <p className="text-sm" style={{ color: 'rgba(240,235,248,0.5)' }}>歌曲挑戰 — 唱出你的舞台感！</p>
+                    <div>
+                        <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,45,122,0.7)' }}>第三關 · 歌曲挑戰</p>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight"
+                            style={{ background: 'linear-gradient(135deg, #FF2D7A, #FFD93D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            K哥之王
+                        </h1>
+                        <p className="text-xs mt-1" style={{ color: 'rgba(240,235,248,0.4)' }}>唱出你的舞台感！</p>
+                    </div>
                 </header>
 
                 <div className="flex-1 min-h-0 w-full overflow-y-auto p-4 text-left font-medium">
@@ -158,7 +156,6 @@ export default function KaraokeChallenge() {
                 </div>
             </div>
 
-            {/* ⑤ 關卡完成導航按鈕 */}
             {challengeCompleted && !isLoading && (
                 <div className="w-full max-w-md mx-auto px-4 pb-2 shrink-0">
                     <p className="text-xs text-center mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>接下來要去哪裡？</p>
@@ -167,9 +164,9 @@ export default function KaraokeChallenge() {
                             <button key={opt.route} onClick={() => router.push(opt.route)}
                                 className="px-4 py-2 rounded-2xl text-sm font-medium transition-all"
                                 style={{
-                                    background: opt.route === '/' ? 'rgba(139,92,246,0.15)' : 'rgba(255,217,61,0.15)',
-                                    border: opt.route === '/' ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,217,61,0.4)',
-                                    color: opt.route === '/' ? '#8B5CF6' : '#FFD93D',
+                                    background: opt.route === '/' ? 'rgba(139,92,246,0.15)' : 'rgba(255,45,122,0.15)',
+                                    border: opt.route === '/' ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,45,122,0.4)',
+                                    color: opt.route === '/' ? '#8B5CF6' : '#FF2D7A',
                                 }}>
                                 {opt.label}
                             </button>

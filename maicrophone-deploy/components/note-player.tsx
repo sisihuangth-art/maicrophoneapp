@@ -6,6 +6,23 @@ interface NotePlayerProps {
     notes: string[];
 }
 
+// ── 唱名對照表 ─────────────────────────────────────────────────
+const SOLFEGE: Record<string, string> = {
+    'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa',
+    'G': 'Sol', 'A': 'La', 'B': 'Si',
+    'C#': 'Do#', 'Db': 'Do#',
+    'D#': 'Re#', 'Eb': 'Re#',
+    'F#': 'Fa#', 'Gb': 'Fa#',
+    'G#': 'Sol#', 'Ab': 'Sol#',
+    'A#': 'La#', 'Bb': 'La#',
+};
+
+function getSolfege(note: string): string {
+    const match = note.match(/^([A-G]#?b?)/);
+    const base = match ? match[1] : note;
+    return SOLFEGE[base] ?? base;
+}
+
 // ── MIDI 計算 ──────────────────────────────────────────────────
 const NOTE_SEMITONES: Record<string, number> = {
     'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
@@ -21,8 +38,8 @@ function noteToMidi(note: string): number {
     return (octave + 1) * 12 + semitone;
 }
 
-const CONTAINER_H = 130;
-const PILL_H = 34;
+const CONTAINER_H = 140;
+const PILL_H = 48; // 加高以容納唱名
 const VERTICAL_RANGE = CONTAINER_H - PILL_H;
 
 function computePositions(notes: string[]) {
@@ -100,20 +117,20 @@ export function NotePlayer({ notes }: NotePlayerProps) {
                     })}
                 </svg>
 
-                {/* 音符 Pills — ✅ transform 只出現一次，合併 base + active */}
+                {/* 音符 Pills */}
                 {notes.map((note, i) => {
                     const { centerX, centerY } = positions[i];
                     const isActive = activeIndex === i;
+                    const solfege = getSolfege(note);
                     return (
                         <div
                             key={i}
-                            className="absolute flex items-center gap-1 px-3 rounded-xl text-xs font-mono font-bold border transition-all duration-200"
+                            className="absolute flex flex-col items-center justify-center gap-0.5 px-3 rounded-xl border transition-all duration-200"
                             style={{
                                 left: `${centerX}%`,
                                 top: `${centerY - PILL_H / 2}px`,
                                 height: `${PILL_H}px`,
-                                whiteSpace: 'nowrap',
-                                // ✅ 修：transform 只寫一次，active 時加上 scale
+                                minWidth: '52px',
                                 transform: isActive
                                     ? 'translateX(-50%) scale(1.12)'
                                     : 'translateX(-50%)',
@@ -123,19 +140,27 @@ export function NotePlayer({ notes }: NotePlayerProps) {
                                 borderColor: isActive
                                     ? 'rgba(255,45,122,0.7)'
                                     : 'rgba(255,255,255,0.15)',
-                                color: isActive
-                                    ? '#FF2D7A'
-                                    : 'rgba(240,235,248,0.75)',
                                 boxShadow: isActive
                                     ? '0 0 12px rgba(255,45,122,0.35)'
                                     : undefined,
                             }}
                         >
-                            <Volume2
-                                className="w-3 h-3"
-                                style={{ opacity: isActive ? 1 : 0.35 }}
-                            />
-                            {note}
+                            {/* 音符名稱 */}
+                            <div className="flex items-center gap-0.5">
+                                <Volume2
+                                    className="w-2.5 h-2.5 flex-shrink-0"
+                                    style={{ color: isActive ? '#FF2D7A' : 'rgba(240,235,248,0.4)', opacity: isActive ? 1 : 0.5 }}
+                                />
+                                <span className="text-xs font-mono font-bold"
+                                    style={{ color: isActive ? '#FF2D7A' : 'rgba(240,235,248,0.8)' }}>
+                                    {note}
+                                </span>
+                            </div>
+                            {/* 唱名 */}
+                            <div className="text-[10px] font-medium"
+                                style={{ color: isActive ? 'rgba(255,45,122,0.8)' : 'rgba(240,235,248,0.35)' }}>
+                                {solfege}
+                            </div>
                         </div>
                     );
                 })}

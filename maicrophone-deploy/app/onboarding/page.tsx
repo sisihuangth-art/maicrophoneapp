@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { getUser } from '@/lib/auth';
 
-const ROUTE_RE = /\{"route":\s*"(pitchmatching|longtone|karaoke)"\}/;
+// ✅ 修：允許 JSON 鍵值之間有空格
+const ROUTE_RE = /\{\s*"route"\s*:\s*"(pitchmatching|longtone|karaoke)"\s*\}/;
 
 const QUICK_REPLIES = [
     { label: '🎵 音準', value: '音準' },
@@ -33,15 +34,14 @@ export default function OnboardingPage() {
 
     const isLoading = status === 'submitted' || status === 'streaming';
 
-    // Trigger AI to speak first
+    // ✅ 修：移除 sendMessage 出 deps
     useEffect(() => {
         if (!hasInitialized.current && user) {
             hasInitialized.current = true;
             sendMessage({ role: 'user', parts: [{ type: 'text', text: '開始' }] as any });
         }
-    }, [user, sendMessage]);
+    }, [user]); // eslint-disable-line
 
-    // Detect route JSON from AI
     useEffect(() => {
         if (redirecting) return;
         for (const msg of messages) {
@@ -59,7 +59,6 @@ export default function OnboardingPage() {
         }
     }, [messages, redirecting, router]);
 
-    // Auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
@@ -75,7 +74,6 @@ export default function OnboardingPage() {
         sendMessage({ role: 'user', parts: [{ type: 'text', text: content }] as any });
     };
 
-    // Display messages: hide first user message (the trigger "開始")
     const displayMessages = messages.filter((m, i) => !(i === 0 && m.role === 'user'));
     const userMessageCount = messages.filter(m => m.role === 'user').length;
     const showQuickReplies = userMessageCount <= 1 && !redirecting;
@@ -84,7 +82,7 @@ export default function OnboardingPage() {
 
     return (
         <div className="flex flex-col min-h-screen text-white" style={{ backgroundColor: '#0D0A14' }}>
-            {/* Background glows */}
+            {/* 統一粉紫光暈背景 */}
             <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full"
                     style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)' }} />
@@ -92,21 +90,19 @@ export default function OnboardingPage() {
                     style={{ background: 'radial-gradient(circle, rgba(255,45,122,0.1) 0%, transparent 70%)' }} />
             </div>
 
-            {/* Header */}
+            {/* Header — 與主頁一致 */}
             <header className="relative z-10 flex items-center justify-center p-5 pt-8">
                 <div className="text-center">
-                    <h1
-                        className="text-2xl font-extrabold"
+                    <h1 className="text-2xl font-extrabold"
                         style={{
                             fontFamily: "'Bricolage Grotesque', sans-serif",
                             background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
-                        }}
-                    >
+                        }}>
                         Maicrophone
                     </h1>
-                    <p className="text-xs mt-1" style={{ color: 'rgba(240,235,248,0.4)' }}>歌唱力養成森林</p>
+                    <p className="text-xs mt-1" style={{ color: 'rgba(240,235,248,0.4)' }}>歌唱力養成森林 🌿</p>
                 </div>
             </header>
 
@@ -124,8 +120,7 @@ export default function OnboardingPage() {
                     </div>
                 )}
 
-                {displayMessages.map((msg, i) => {
-                    // Strip route JSON from display
+                {displayMessages.map((msg) => {
                     const rawText = Array.isArray(msg.parts)
                         ? (msg.parts as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
                         : '';
@@ -142,13 +137,11 @@ export default function OnboardingPage() {
                                     </div>
                                 </div>
                             )}
-                            <div
-                                className="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
+                            <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed"
                                 style={msg.role === 'assistant'
                                     ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderTopLeftRadius: 4 }
                                     : { background: 'linear-gradient(135deg, rgba(255,45,122,0.25), rgba(139,92,246,0.25))', border: '1px solid rgba(255,45,122,0.3)', borderTopRightRadius: 4 }
-                                }
-                            >
+                                }>
                                 {cleanText}
                             </div>
                         </div>
@@ -187,23 +180,11 @@ export default function OnboardingPage() {
                 {showQuickReplies && !isLoading && (
                     <div className="flex gap-2 mb-3 justify-center flex-wrap">
                         {QUICK_REPLIES.map((r) => (
-                            <button
-                                key={r.value}
-                                onClick={() => handleSend(r.value)}
+                            <button key={r.value} onClick={() => handleSend(r.value)}
                                 className="px-4 py-2 rounded-full text-sm font-medium transition-all hover:scale-105"
-                                style={{
-                                    background: 'rgba(139,92,246,0.15)',
-                                    border: '1px solid rgba(139,92,246,0.4)',
-                                    color: '#8B5CF6',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(139,92,246,0.3)';
-                                    e.currentTarget.style.color = 'white';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(139,92,246,0.15)';
-                                    e.currentTarget.style.color = '#8B5CF6';
-                                }}
+                                style={{ background: 'rgba(255,45,122,0.15)', border: '1px solid rgba(255,45,122,0.4)', color: '#FF2D7A' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,45,122,0.3)'; e.currentTarget.style.color = 'white'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,45,122,0.15)'; e.currentTarget.style.color = '#FF2D7A'; }}
                             >
                                 {r.label}
                             </button>
@@ -213,34 +194,23 @@ export default function OnboardingPage() {
 
                 <div className="flex gap-2 items-center rounded-full px-4 py-2"
                     style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <button
-                        onClick={() => toggleListening()}
+                    <button onClick={() => toggleListening()}
                         className="p-2 rounded-full flex-shrink-0 transition"
-                        style={isListening
-                            ? { background: 'rgba(6,214,160,0.2)', color: '#06D6A0' }
-                            : { color: 'rgba(240,235,248,0.4)' }}
-                    >
+                        style={isListening ? { background: 'rgba(6,214,160,0.2)', color: '#06D6A0' } : { color: 'rgba(240,235,248,0.4)' }}>
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.94V23h2v-2.06A9 9 0 0 0 21 12v-2h-2z"/>
                         </svg>
                     </button>
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                    <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         placeholder={isListening ? '聆聽中...' : '或直接輸入...'}
                         disabled={isLoading}
                         className="flex-1 bg-transparent text-sm outline-none"
-                        style={{ color: 'white' }}
-                    />
-                    <button
-                        onClick={() => handleSend()}
-                        disabled={isLoading || !input.trim()}
+                        style={{ color: 'white' }} />
+                    <button onClick={() => handleSend()} disabled={isLoading || !input.trim()}
                         className="p-2 rounded-full flex-shrink-0 transition disabled:opacity-30"
-                        style={{ background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)' }}
-                    >
+                        style={{ background: 'linear-gradient(135deg, #FF2D7A, #8B5CF6)' }}>
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
