@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 function ForestBackground() {
     return (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', height: '43vh', pointerEvents: 'none', zIndex: 2 }}>
+        <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '480px', height: '43vh', pointerEvents: 'none', zIndex: 2 }}>
             <svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg"
                 preserveAspectRatio="xMidYMax slice" style={{ width: '100%', height: '100%' }}>
                 {/* 遠景樹：淡紫，製造景深 */}
@@ -84,7 +84,7 @@ export default function LoginPage() {
         <>
             <ForestBackground />
             <div
-                className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden"
+                className="flex min-h-screen items-center justify-center p-4 relative"
                 style={{ backgroundColor: '#0D0A14' }}
             >
                 {/* Background glows */}
